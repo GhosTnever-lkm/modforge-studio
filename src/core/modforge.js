@@ -1,4 +1,4 @@
-export const VERSION = '0.1.0';
+export const VERSION = '0.1.1';
 export const MAX_FILES = 20_000;
 export const MAX_UNPACKED_BYTES = 500 * 1024 * 1024;
 
@@ -6,13 +6,11 @@ const textDecoder = new TextDecoder('utf-8', { fatal: false });
 const clean = (v, fallback = '') => String(v ?? fallback).replace(/[\u0000-\u001f]/g, ' ').trim();
 
 export function normalizePath(path) {
-  const parts = String(path ?? '').replaceAll('\\', '/').split('/').filter(Boolean);
-  const safe = [];
-  for (const part of parts) {
-    if (part === '.' || part === '..' || part.startsWith('/') || /^[a-z]:/i.test(part)) continue;
-    safe.push(part);
-  }
-  return safe.join('/');
+  const normalized = String(path ?? '').replaceAll('\\', '/');
+  if (!normalized || normalized.startsWith('/') || /^[a-z]:/i.test(normalized) || normalized.includes('\0')) return '';
+  const parts = normalized.split('/');
+  if (parts.some((part) => part === '.' || part === '..')) return '';
+  return parts.filter(Boolean).join('/');
 }
 
 export function stripCommonWrapper(files) {
