@@ -1,0 +1,12 @@
+{
+  "name": "modforge-studio",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test",
+    "check:version": "node scripts/check-version.mjs",
+    "check": "npm run check:version && node --check src/core/modforge.js && node --check src/core/zip.js && node --check src/storage/db.js && node --check src/ui/app.js && node --check sw.js && node --test",
+    "serve": "node scripts/serve.mjs"
+  }
+}
