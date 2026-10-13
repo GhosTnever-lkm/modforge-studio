@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { deflateRawSync } from 'node:zlib';
-import { analyzeMod, buildReport, compareMods, dependencyPlan, normalizePath, stripCommonWrapper } from '../src/core/modforge.js';
+import { analyzeMod, buildReport, compareMods, dependencyPlan, normalizePath, stripCommonWrapper, uniqueModFolderNames } from '../src/core/modforge.js';
 import { readZip, writeZip } from '../src/core/zip.js';
 
 const bytes = (text) => new TextEncoder().encode(text);
@@ -55,6 +55,15 @@ test('compares file paths case-insensitively and identifies content equality', a
   assert.equal(conflicts[0].identical, true);
 });
 
+test('gives same-named mods unique stable output folders', () => {
+  const mods = [{ id: 'copy-a', name: 'My Mod' }, { id: 'copy-b', name: 'my-mod' }, { id: 'copy-c', name: 'MY MOD' }];
+  const names = uniqueModFolderNames(mods);
+  assert.equal(names.length, 3);
+  assert.equal(new Set(names.map((name) => name.toLowerCase())).size, 3);
+  assert.equal(names[0], 'my-mod');
+  assert.deepEqual(names, uniqueModFolderNames(mods));
+});
+
 test('dependency plan orders prerequisites and reports missing links and cycles', async () => {
   const base = await analyzeMod({ id: 'base', files: [{ path: 'descriptor.mod', bytes: bytes('name="base"') }] });
   base.dependencies = [];
@@ -82,6 +91,10 @@ test('writes and reads a valid store-only ZIP archive', async () => {
 
 test('writer refuses traversal entries', () => {
   assert.throws(() => writeZip([{ path: '../secret.txt', bytes: bytes('x') }]), /Недопустимый путь/);
+});
+
+test('writer refuses duplicate paths even when only case differs', () => {
+  assert.throws(() => writeZip([{ path: 'Mods/a.txt', bytes: bytes('first') }, { path: 'mods/A.txt', bytes: bytes('second') }]), /Повторяющийся путь/);
 });
 
 test('ZIP inflate stops when actual output exceeds the declared file size', async () => {

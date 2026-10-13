@@ -1,4 +1,4 @@
-export const VERSION = '0.1.2';
+export const VERSION = '0.1.3';
 export const MAX_FILES = 20_000;
 export const MAX_UNPACKED_BYTES = 500 * 1024 * 1024;
 
@@ -133,6 +133,22 @@ export function compareMods(mods) {
     byPath.get(key).push({ modId: mod.id, modName: mod.name, path: file.path, sha256: file.sha256 });
   }
   return [...byPath.values()].filter((items) => new Set(items.map((x) => x.modId)).size > 1).map((items) => ({ path: items[0].path, files: items, identical: new Set(items.map((x) => x.sha256)).size === 1 }));
+}
+
+export function uniqueModFolderNames(mods) {
+  const used = new Set();
+  return mods.map((mod) => {
+    const base = clean(mod.name).toLowerCase().normalize('NFKD').replace(/[^a-z0-9а-яё]+/gi, '-').replace(/^-|-$/g, '') || 'modforge';
+    let name = base;
+    if (used.has(name.toLowerCase())) {
+      const suffix = clean(mod.id).toLowerCase().normalize('NFKD').replace(/[^a-z0-9а-яё]+/gi, '-').replace(/^-|-$/g, '').slice(0, 12) || 'mod';
+      name = `${base}-${suffix}`;
+      let index = 2;
+      while (used.has(name.toLowerCase())) name = `${base}-${suffix}-${index++}`;
+    }
+    used.add(name.toLowerCase());
+    return name;
+  });
 }
 
 export function dependencyPlan(mods) {
