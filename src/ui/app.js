@@ -1,4 +1,4 @@
-import { analyzeMod, buildReport, compareMods, dependencyPlan, normalizePath, stripCommonWrapper } from '../core/modforge.js';
+import { analyzeMod, buildReport, compareMods, dependencyPlan, normalizePath, stripCommonWrapper, uniqueModFolderNames } from '../core/modforge.js';
 import { readZip, writeZip } from '../core/zip.js';
 import { clearAll, deleteOne, getAll, put } from '../storage/db.js';
 
@@ -81,6 +81,11 @@ function downloadBlob(blob, filename) { const url = URL.createObjectURL(blob), a
 function downloadReport() { const report = buildReport(selectedMods(), state.profile.name); downloadBlob(new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' }), `${slug(state.profile.name)}-report.json`); }
 function slug(text) { return String(text).toLowerCase().normalize('NFKD').replace(/[^a-z0-9а-яё]+/gi, '-').replace(/^-|-$/g, '') || 'modforge'; }
 
+function buildReleaseFiles(mods) {
+  const roots = uniqueModFolderNames(mods);
+  return mods.flatMap((mod, index) => mod.files.map((file) => ({ path: `${roots[index]}/${file.path}`, bytes: file.bytes })));
+}
+
 async function importFiles(fileList, folderMode = false) {
   const files = [...fileList]; if (!files.length) return;
   const progress = $('#import-progress'); progress.textContent = `Читаю ${files.length} файлов…`;
@@ -148,7 +153,7 @@ async function init() {
     if (event.target.closest('#help-button')) { toast('Добавь папки модов или ZIP. Результаты хранятся локально в текущем браузере.'); return; }
     if (event.target.closest('#build-release')) {
       const mods = selectedMods(); if (!mods.length) { toast('Сначала выбери моды в профиле', 'warning'); return; }
-      const name = slug($('#release-name').value || 'modforge-collection'), report = buildReport(mods, state.profile.name), allFiles = mods.flatMap((m) => m.files.map((f) => ({ path: `${slug(m.name)}/${f.path}`, bytes: f.bytes })));
+      const name = slug($('#release-name').value || 'modforge-collection'), report = buildReport(mods, state.profile.name), allFiles = buildReleaseFiles(mods);
       if ($('#include-report').checked) { allFiles.push({ path: 'MODFORGE-REPORT.json', bytes: new TextEncoder().encode(JSON.stringify(report, null, 2)) }); const notes = $('#release-notes').value.trim(); if (notes) allFiles.push({ path: 'RELEASE-NOTES.txt', bytes: new TextEncoder().encode(notes) }); }
       try { const blob = writeZip(allFiles); const digest = await (await import('../core/modforge.js')).sha256(new Uint8Array(await blob.arrayBuffer())); downloadBlob(blob, `${name}.zip`); downloadBlob(new Blob([`${digest}  ${name}.zip\n`], { type: 'text/plain' }), `${name}.zip.sha256`); const status = $('#build-status'); status.dataset.manual = '1'; status.textContent = `ZIP собран: ${name}.zip · ${humanSize(blob.size)} · SHA-256: ${digest}`; toast('ZIP и файл SHA-256 скачаны', 'success'); }
       catch (error) { toast(`Сборка не удалась: ${error.message}`, 'error'); }

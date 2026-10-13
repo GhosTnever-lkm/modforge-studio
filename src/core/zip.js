@@ -78,10 +78,13 @@ const concat = (arrays) => { const length = arrays.reduce((n, a) => n + a.length
 
 export function writeZip(files) {
   if (files.length > MAX_FILES) throw new Error(`Слишком много файлов: максимум ${MAX_FILES}.`);
-  const encoder = new TextEncoder(), locals = [], centrals = []; let offset = 0, total = 0;
+  const encoder = new TextEncoder(), locals = [], centrals = [], seenPaths = new Set(); let offset = 0, total = 0;
   const sorted = [...files].sort((a, b) => a.path.localeCompare(b.path, 'en'));
   for (const file of sorted) {
     const name = normalizePath(file.path); if (!name || name !== String(file.path).replaceAll('\\', '/')) throw new Error(`Недопустимый путь в архиве: ${file.path}`);
+    const pathKey = name.toLocaleLowerCase('en-US');
+    if (seenPaths.has(pathKey)) throw new Error(`Повторяющийся путь в архиве: ${name}`);
+    seenPaths.add(pathKey);
     const nameBytes = encoder.encode(name), bytes = file.bytes instanceof Uint8Array ? file.bytes : new Uint8Array(file.bytes), crc = crc32(bytes); total += bytes.length;
     if (total > MAX_UNPACKED_BYTES) throw new Error('Общий размер пакета больше лимита 500 МиБ.');
     const local = new Uint8Array([0x50,0x4b,0x03,0x04,...le16(20),...le16(0x0800),...le16(0),...le16(0),...le16(0),...le32(crc),...le32(bytes.length),...le32(bytes.length),...le16(nameBytes.length),...le16(0),...nameBytes,...bytes]);

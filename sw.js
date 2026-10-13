@@ -1,4 +1,4 @@
-const CACHE = 'modforge-studio-v0.1.2';
+const CACHE = 'modforge-studio-v0.1.3';
 const SHELL = [
   './', './index.html', './manifest.webmanifest', './icon.svg', './src/ui/styles.css', './src/ui/app.js',
   './src/core/modforge.js', './src/core/zip.js', './src/storage/db.js'
